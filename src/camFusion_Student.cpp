@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <numeric>
+#include <math.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -129,11 +130,45 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
     }
 }
 
+int accumulateDistances(int lhs, const cv::DMatch& rhs)
+{
+    return lhs + rhs.distance;
+}
 
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
+    std::vector<cv::DMatch> all_keypoints_box;
+    for (int i=0; i<kptMatches.size(); i++){
+        int coord_x = kptsPrev[kptMatches[i].trainIdx].pt.x;
+        int coord_y = kptsPrev[kptMatches[i].trainIdx].pt.y;
+        if (coord_x >= boundingBox.roi.x && coord_x < boundingBox.roi.x + boundingBox.roi.width &&
+            coord_y >= boundingBox.roi.y && coord_y < boundingBox.roi.y + boundingBox.roi.height)
+        {
+            all_keypoints_box.push_back(kptMatches[i]);
+        }
+    }
+    float total_dist;
+    for (int i=0; i<all_keypoints_box.size(); i++)
+    {
+        total_dist += kptsPrev[all_keypoints_box[i].imgIdx].pt.x;
+    }
+    //float total_dist = //std::accumulate(all_keypoints_box.begin(), all_keypoints_box.end(), 0, accumulateDistances);
+    float average = static_cast<float>(total_dist)/all_keypoints_box.size();
+    float stndrd_dev = 0;
+    for (int i=0; i<all_keypoints_box.size(); i++)
+    {
+        stndrd_dev += std::pow(kptsPrev[all_keypoints_box[i].imgIdx].pt.x - average,2);
+    }
+    stndrd_dev = sqrt(stndrd_dev/(all_keypoints_box.size()-1));
+    for (int i=0; i<all_keypoints_box.size(); i++)
+    {
+        if (kptsPrev[all_keypoints_box[i].imgIdx].pt.x > 2*stndrd_dev + average || kptsPrev[all_keypoints_box[i].imgIdx].pt.x < -2*stndrd_dev + average){
+            all_keypoints_box.erase(all_keypoints_box.begin()+i);
+            i--;
+        }
+    }
+    boundingBox.kptMatches = all_keypoints_box;
 }
 
 
@@ -141,18 +176,147 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, 
                       std::vector<cv::DMatch> kptMatches, double frameRate, double &TTC, cv::Mat *visImg)
 {
-    // ...
+    /*vector<double> distRatios;
+    for (int i=0; i<kptMatches.size()-1; i++)
+    {
+        cv::KeyPoint prev = kptsPrev[kptMatches[i].trainIdx];
+        cv::KeyPoint curr = kptsCurr[kptMatches[i].queryIdx];
+        for (int j=0; j<kptMatches.size(); j++)
+        {
+            cv::KeyPoint prev_other = kptsPrev[kptMatches[j].trainIdx];
+            cv::KeyPoint curr_other = kptsCurr[kptMatches[j].queryIdx];
+
+            // Compute distances for previous and current frame
+            double distCurr = cv::norm(curr.pt - curr_other.pt);
+            double distPrev = cv::norm(prev.pt - prev_other.pt);
+            double minDist = 100.0; // Threshold the calculated distRatios by requiring a minimum current distance
+
+            // Avoid division by zero and apply the threshold
+            if (distPrev > std::numeric_limits<double>::epsilon() && distCurr >= minDist)
+            {
+                distRatios.push_back(distCurr / distPrev);
+            }
+        }
+    }
+    std::sort(distRatios.begin(),distRatios.end());
+    TTC = -1/(frameRate*(1-distRatios[distRatios.size()/2]));*/
+    double dt = 1.0 / frameRate;
+    // Compute distance ratios on every pair of keypoints, O(n^2) on the number of matches contained within the ROI
+    vector<double> distRatios;
+    for (auto itrFirstMatch = kptMatches.begin(); itrFirstMatch != kptMatches.end() - 1; ++itrFirstMatch)
+    {
+        // First points in previous and current frame
+        cv::KeyPoint kptFirstCurr = kptsCurr.at(itrFirstMatch->trainIdx);
+        cv::KeyPoint kptFirstPrev = kptsPrev.at(itrFirstMatch->queryIdx);
+ 
+        for (auto itrSecondMatch = kptMatches.begin() + 1; itrSecondMatch != kptMatches.end(); ++itrSecondMatch)
+        {
+            cv::KeyPoint kptSecondCurr = kptsCurr.at(itrSecondMatch->trainIdx);
+            cv::KeyPoint kptSecondPrev = kptsPrev.at(itrSecondMatch->queryIdx);
+
+            // Compute distances for previous and current frame
+            double distCurr = cv::norm(kptFirstCurr.pt - kptSecondCurr.pt);
+            double distPrev = cv::norm(kptFirstPrev.pt - kptSecondPrev.pt);
+
+            double minDist = 100.0; // Threshold the calculated distRatios by requiring a minimum current distance
+
+            // Avoid division by zero and apply the threshold
+            if (distPrev > std::numeric_limits<double>::epsilon() && distCurr >= minDist)
+            {
+                double distRatio = distCurr / distPrev;
+                distRatios.push_back(distRatio);
+            }
+        }
+    }
+
+    // Only continue if the vector of distRatios is not empty
+    if (distRatios.size() == 0)
+    {
+        TTC = std::numeric_limits<double>::quiet_NaN();
+        return;
+    }
+
+    // Use the median to exclude outliers
+    std::sort(distRatios.begin(), distRatios.end());
+    double medianDistRatio = distRatios[distRatios.size() / 2];
+
+    TTC = -dt / (1 - medianDistRatio);
 }
 
 
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    // ...
+    std::sort(lidarPointsPrev.begin(),lidarPointsPrev.end());
+    std::sort(lidarPointsCurr.begin(),lidarPointsCurr.end());
+    double median_prev = lidarPointsPrev[lidarPointsPrev.size()/2].x;
+    double median_curr = lidarPointsCurr[lidarPointsCurr.size()/2].x;
+    TTC = median_prev > median_curr ? median_curr/(frameRate * (median_prev-median_curr)) : 99999999;
 }
 
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
+    // bbBestMatches at the beginning empty
+    std::map<std::vector<int>,int> counter_map;
+    for (auto match : matches)
+    {
+        std::vector<int> roi_beg; 
+        std::vector<int> roi_end;
+
+        for (auto bbox : prevFrame.boundingBoxes)
+        {
+            if (prevFrame.keypoints[match.queryIdx].pt.x >= bbox.roi.x && prevFrame.keypoints[match.queryIdx].pt.x < bbox.roi.x + bbox.roi.width &&
+                prevFrame.keypoints[match.queryIdx].pt.y >= bbox.roi.y && prevFrame.keypoints[match.queryIdx].pt.y < bbox.roi.y + bbox.roi.height)
+            {
+                roi_beg.push_back(bbox.boxID);
+            }
+        }
+        for (auto bbox : currFrame.boundingBoxes)
+        {
+            if (currFrame.keypoints[match.trainIdx].pt.x >= bbox.roi.x && currFrame.keypoints[match.trainIdx].pt.x < bbox.roi.x + bbox.roi.width &&
+                currFrame.keypoints[match.trainIdx].pt.y >= bbox.roi.y && currFrame.keypoints[match.trainIdx].pt.y < bbox.roi.y + bbox.roi.height)
+            {
+                roi_end.push_back(bbox.boxID);
+            }
+        }
+        for (auto prev_frame : roi_beg)
+        {
+            for (auto next_frame : roi_end)
+            {
+                if ( counter_map.find({prev_frame,next_frame}) == counter_map.end() ) {
+                    // not found
+                    counter_map[{prev_frame,next_frame}] = 1;
+                } else {
+                    // found
+                    counter_map[{prev_frame,next_frame}] += 1;
+                }
+            }
+        }
+    }
+    std::map<int,int> number_elements;
+    std::map<int,int> partner;
+    for (auto combination : counter_map){
+        if (number_elements.find(combination.first[0]) != number_elements.end())
+        {
+            if (combination.second > number_elements[combination.first[0]])
+            {
+                number_elements[combination.first[0]] = combination.second;
+                partner[combination.first[0]] = combination.first[1];
+            }
+        }
+        else
+        {
+            number_elements.insert({combination.first[0],combination.second});
+            partner.insert({combination.first[0],combination.first[1]});
+        }
+    }
+    int min_number_points = 10;
+    for (auto elem : number_elements)
+    {
+        if (elem.second > min_number_points)
+        {
+            bbBestMatches.insert({elem.first,partner[elem.first]});
+        }
+    }
 }

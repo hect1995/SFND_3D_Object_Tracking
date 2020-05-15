@@ -42,8 +42,8 @@ int main(int argc, const char *argv[])
     // object detection
     string yoloBasePath = dataPath + "dat/yolo/";
     string yoloClassesFile = yoloBasePath + "coco.names";
-    string yoloModelConfiguration = yoloBasePath + "yolov3.cfg";
-    string yoloModelWeights = yoloBasePath + "yolov3.weights";
+    string yoloModelConfiguration = "/Users/hectoresteban/Documents/C++/SensorFusion/SFND_3D_Object_Tracking/dat/yolo/yolov3.cfg";
+    string yoloModelWeights = "/Users/hectoresteban/Documents/C++/SensorFusion/SFND_3D_Object_Tracking/dat/yolo/yolov3.weights";
 
     // Lidar
     string lidarPrefix = "KITTI/2011_09_26/velodyne_points/data/000000";
@@ -129,7 +129,7 @@ int main(int argc, const char *argv[])
         clusterLidarWithROI((dataBuffer.end()-1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
 
         // Visualize 3D objects
-        bVis = true;
+        bVis = false;
         if(bVis)
         {
             show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
@@ -140,7 +140,7 @@ int main(int argc, const char *argv[])
         
         
         // REMOVE THIS LINE BEFORE PROCEEDING WITH THE FINAL PROJECT
-        continue; // skips directly to the next image without processing what comes beneath
+        //continue; // skips directly to the next image without processing what comes beneath
 
         /* DETECT IMAGE KEYPOINTS */
 
@@ -150,7 +150,7 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "SHITOMASI";
+        string detectorType = "HARRIS";
 
         if (detectorType.compare("SHITOMASI") == 0)
         {
@@ -158,7 +158,7 @@ int main(int argc, const char *argv[])
         }
         else
         {
-            //...
+            detKeypointsModern(keypoints, imgGray, detectorType, false);
         }
 
         // optional : limit number of keypoints (helpful for debugging and learning)
@@ -184,7 +184,7 @@ int main(int argc, const char *argv[])
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+        string descriptorType = "ORB"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
@@ -223,6 +223,19 @@ int main(int argc, const char *argv[])
 
             // store matches in current data frame
             (dataBuffer.end()-1)->bbMatches = bbBestMatches;
+
+            /*cv::Mat matchImg = ((dataBuffer.end() - 1)->cameraImg).clone();
+            cv::drawMatches((dataBuffer.end() - 2)->cameraImg, (dataBuffer.end() - 2)->keypoints,
+                            (dataBuffer.end() - 1)->cameraImg, (dataBuffer.end() - 1)->keypoints,
+                            matches, matchImg,
+                            cv::Scalar::all(-1), cv::Scalar::all(-1),
+                            vector<char>(), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+            string windowName = "Matching keypoints between two camera images";
+            cv::namedWindow(windowName, 7);
+            cv::imshow(windowName, matchImg);
+            cout << "Press key to continue to next image" << endl;
+            cv::waitKey(0); // wait for key to be pressed*/
 
             cout << "#8 : TRACK 3D OBJECT BOUNDING BOXES done" << endl;
 
@@ -263,6 +276,7 @@ int main(int argc, const char *argv[])
                     //// TASK FP.3 -> assign enclosed keypoint matches to bounding box (implement -> clusterKptMatchesWithROI)
                     //// TASK FP.4 -> compute time-to-collision based on camera (implement -> computeTTCCamera)
                     double ttcCamera;
+
                     clusterKptMatchesWithROI(*currBB, (dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->kptMatches);                    
                     computeTTCCamera((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints, currBB->kptMatches, sensorFrameRate, ttcCamera);
                     //// EOF STUDENT ASSIGNMENT

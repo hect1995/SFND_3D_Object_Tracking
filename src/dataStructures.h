@@ -8,6 +8,11 @@
 
 struct LidarPoint { // single lidar point in space
     double x,y,z,r; // x,y,z in [m], r is point reflectivity
+
+    bool operator < (const LidarPoint &lidar) const
+    {
+        return (x < lidar.x);
+    }
 };
 
 struct BoundingBox { // bounding box around a classified object (contains both 2D and 3D data)
