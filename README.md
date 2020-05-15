@@ -38,7 +38,7 @@ In this final project, you will implement the missing parts in the schematic. To
 The results I get with the LiDAR are more stable than with the camera, which makes sense considering that the LiDAR is an active sensor.
 Even though in some frames the distance increases when it should decrease the results are pretty stable I would say
 <p align="center">
-  <img  src="https://github.com/hect1995/SFND_3D_Object_Tracking/blob/master/results/lidar_1st.jpg">
+  <img  src="https://github.com/hect1995/SFND_3D_Object_Tracking/blob/master/results/lidar_1st.png">
 </p>
 
 ### FP.6 Performance Evaluation 2
