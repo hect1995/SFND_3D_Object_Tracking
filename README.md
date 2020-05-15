@@ -49,7 +49,7 @@ Results of each frame for bad Detector/Descriptor combination are in the left pa
 
 | Frame | Combination | TTC Lidar | TTC Camera | Combination | TTC Lidar | TTC Camera |
 | --- | --- | --- |--- | --- | --- |--- |
-|0/1 | HARRIS/ORB |14.09 | -inf|FAST/BRIEF |12.9722 | 12.1312|
+|0/1 | HARRIS/ORB |14.09 | -inf|FAST/BRIEF |12.9722 | 5.1312|
 |1/2 | HARRIS/ORB |16.68 | 10.01|FAST/BRIEF | 12.264 | 10.7908|
 |2/3 | HARRIS/ORB |15.90 | 9.67|FAST/BRIEF |13.9161 | 12.5844|
 |3/4 | HARRIS/ORB |12.67 | 4.56|FAST/BRIEF |7.11572 | 14.1171|
@@ -60,11 +60,11 @@ Results of each frame for bad Detector/Descriptor combination are in the left pa
 |8/9 | HARRIS/ORB |8.95 | 14.53|FAST/BRIEF |18.1318 | 12.7521|
 |9/10 | HARRIS/ORB |9.90 | 23.5|FAST/BRIEF |18.0318 | 11.5258|
 |10/11 | HARRIS/ORB |9.59 | 7.54|FAST/BRIEF |3.83244 | 12.1|
-|11/12 | HARRIS/ORB |8.57 | 5.70|FAST/BRIEF |-10.8537 | 11.7805|
+|11/12 | HARRIS/ORB |8.57 | 5.70|FAST/BRIEF |10.5234 | 11.7805|
 |12/13 | HARRIS/ORB |9.22307 | 13.4095|FAST/BRIEF |9.22307 | 11.6205|
 |13/14 | HARRIS/ORB |10.9678 | inf|FAST/BRIEF |10.9678 | 11.1323|
 |14/15 | HARRIS/ORB | 8.09422 | nan|FAST/BRIEF |8.09422 | 12.8498|
 |15/16 | HARRIS/ORB |3.17535 | 12.5305|FAST/BRIEF |3.17535 | 11.328|
-|16/17 | HARRIS/ORB | 11.99424 | nan|FAST/BRIEF |-9.99424 | 10.8182|
+|16/17 | HARRIS/ORB | 11.99424 | nan|FAST/BRIEF |12.56.99424 | 10.8182|
 |17/18 | HARRIS/ORB |8.30978 | nan|FAST/BRIEF |8.30978 | 11.8703|
 
